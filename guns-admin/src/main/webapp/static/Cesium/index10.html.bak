@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <meta name="description" content="Construct new data points within the range of a discrete set of known data points.">
+    <meta name="cesium-sandcastle-labels" content="Showcases">
+    <title>Cesium Demo</title>
+    <script src="Build/Cesium/Cesium.js"></script>
+    <script type="text/javascript" src="Apps/Sandcastle/Sandcastle-header.js"></script>
+    <script type="text/javascript" src="ThirdParty/requirejs-2.1.20/require.js"></script>
+    <script type="text/javascript">
+    require.config({
+        baseUrl : '../../../Source',
+        waitSeconds : 60
+    });
+    </script>
+</head>
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html">
+<style>
+    @import url(Apps/Sandcastle/templates/bucket.css);
+</style>
+<div id="cesiumContainer" class="fullSize"></div>
+
+<script>
+    var viewer = new Cesium.Viewer('cesiumContainer');
+ //Seed the random number generator for repeatable results.
+
+   var promise=Cesium.GeoJsonDataSource.load('http://localhost:8080/geoserver/cite/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=cite:shanghai&maxFeatures=50&outputFormat=application/json');
+    promise.then(function(dataSource) {
+        viewer.dataSources.add(dataSource);
+        
+        });
+        viewer.flyTo(promise);
+        var scene = viewer.scene;
+        viewer.scene.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(121.479181962681,31.2204944604463,1000)
+        });
+
+ /*
+    var url='http://localhost:8080/geoserver/cite/wms'; //Geoserver(我的端口号默认为8080)
+    var viewer = new Cesium.Viewer('cesiumContainer',{  
+            imageryProvider:new Cesium.WebMapServiceImageryProvider({   
+            url : url,         
+            layers: 'cite:shanghai'// GeoServer自带的图层名   
+            }),  
+            baseLayerPicker:false  // 去掉自带的图层选择器
+        });
+		*/
+
+    </script>
+
+</body>
+</html>

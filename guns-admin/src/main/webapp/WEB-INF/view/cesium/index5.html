@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <meta name="description" content="A CZML example showing a single entity path split across multiple CZML streams.">
+    <meta name="cesium-sandcastle-labels" content="Showcases, DataSources, CZML">
+    <title>Cesium Demo</title>
+     <link href="${ctxPath}/static/Cesium/Apps/Sandcastle/templates/bucket.css" rel="stylesheet" />
+    <script type="text/javascript" src="${ctxPath}/static/Cesium/Apps/Sandcastle/Sandcastle-header.js"></script>
+    <script type="text/javascript" src="${ctxPath}/static/Cesium/ThirdParty/requirejs-2.1.20/require.js"></script>
+    <script src="${ctxPath}/static/Cesium/Build/Cesium/Cesium.js"></script>
+    <script type="text/javascript">
+        if(typeof require === 'function') {
+            require.config({
+                baseUrl : '../../../Source',
+                waitSeconds : 120
+            });
+        }
+    </script>
+</head>
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html">
+        <div id="cesiumContainer" class="fullSize"></div>
+    
+        <div id="toolbar"></div>
+
+    <script>
+  
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            shouldAnimate : true
+        });
+    
+      var handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+        handler.setInputAction(function(evt) {
+            var scene = viewer.scene;
+            if (scene.mode !== Cesium.SceneMode.MORPHING) {
+                var pickedObject = scene.pick(evt.position);
+                if (scene.pickPositionSupported && Cesium.defined(pickedObject) && pickedObject.node) {
+                    var cartesian = viewer.scene.pickPosition(evt.position);
+                    if (Cesium.defined(cartesian)) {
+                        var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                        var lng = Cesium.Math.toDegrees(cartographic.longitude);
+                        var lat = Cesium.Math.toDegrees(cartographic.latitude);
+                        var height = cartographic.height;//模型高度
+                        mapPosition={x:lng,y:lat,z:height}
+                        console.log(mapPosition)
+                    }
+                }
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    
+    </script>
+
+    <!--雷达模型-->
+    <script>
+
+            function RadarUtil(radarLon, radarLat, radarHeight){
+                var that = this;
+                var EarthRadius = 6378137.0;
+                var e2=0.00669437999013;
+                var X0=0,Y0=0,Z0=0;
+                var radarN;
+                var radarlon, radarlat, radarheight;
+                var sinradarlon, cosradarlon, sinradarlat, cosradarlat;
+                
+                radarlon = radarLon;
+                radarlat = radarLat;
+                radarheight = radarHeight;
+                
+                sinradarlon = Math.sin(Math.PI * radarlon / 180);
+                cosradarlon = Math.cos(Math.PI * radarlon / 180);
+                sinradarlat = Math.sin(Math.PI * radarlat / 180);
+                cosradarlat = Math.cos(Math.PI * radarlat / 180);
+                
+                radarN = EarthRadius / (Math.sqrt(1 - e2 * Math.pow(sinradarlat,2)));
+                X0 = (radarN  + radarheight) * cosradarlat * cosradarlon;
+                Y0 = (radarN  + radarheight) * cosradarlat * sinradarlon;
+                Z0 = (radarN * (1 - e2) + radarheight) * sinradarlat;
+                
+                this.radar2gps = function(r, a, h)
+                {
+                    //转直角坐标
+                    var lon, lat, height;
+                    var xy = Math.sqrt(r*r - h*h);
+                    var x1 = xy * Math.sin(Math.PI * a / 180);
+                    var y1 = xy * Math.cos(Math.PI * a / 180);
+                    var z1 = h;
+                    //转大地直角
+                    var xe = -sinradarlon * x1 - sinradarlat*cosradarlon*y1 + cosradarlon* cosradarlat*z1 + X0;
+                    var yn = cosradarlon * x1 - sinradarlat*sinradarlon*y1 + cosradarlat * sinradarlon * z1 +Y0;
+                    var zu = cosradarlat *y1 + sinradarlat * z1 +Z0;
+                    
+                    lon = Math.atan(yn/xe)* 180 / Math.PI;
+            
+                    var initLat = Math.atan(zu / (Math.sqrt(xe * xe  + yn * yn))) * 180 / Math.PI;
+                    lat = this.latIterate(initLat, xe, yn, zu);
+                    height = Math.sqrt(xe * xe + yn* yn) / Math.cos(Math.PI * lat / 180) - radarN;
+                    var result = [lon, lat, radarheight + h];
+                    return result;
+                };
+                
+                this.latIterate = function(initLat, x, y, z)
+                {
+                    var iterateCount = 40;
+                    var finalLat = initLat;
+                    var i=0; 
+                    while(true)
+                    {
+                        if(i>=iterateCount)
+                        {
+                            break;
+                        }
+                        var sinLat = Math.sin(Math.PI * finalLat / 180);
+                        var N = EarthRadius / (Math.sqrt(1- e2 * Math.pow(sinLat, 2)));
+                        finalLat = Math.atan((z + N * e2 * sinLat) / Math.sqrt(x*x + y*y)) * 180 / Math.PI;
+                        i++;
+                    }
+                    return finalLat;
+                }
+            }
+    </script>
+    <!--雷达威力-->
+    <script>
+            var radarWL = [
+                [0, 0],
+                [5, 10],
+                [7, 15],
+                [10,20],
+                [12.5, 28],
+                [15,35],
+                [17.5, 43],
+                [20,50],
+                [22.5, 58],
+                [25,65],
+                [27.5, 71],
+                [30,78],
+                [32.5, 80],
+                [35,82],
+                [37.5, 85],
+                [40,87],
+                [42.5, 89],
+                [45,90],
+                [47.5, 88],
+                [50,82],
+                [52.5, 76],
+                [55,70],
+                [57.5, 65],
+                [60,60],
+                [62.5, 55],
+                [65,50],
+                [67.5, 45],
+                [70,40],
+                [72.5, 30],
+                [75,26],
+                [77.5, 20],
+                [80,15],
+                [82.5, 0],
+                [85,3],
+                [87.5, 1],
+                [90,0]
+                ];
+    </script>
+    <script>
+            //var radarPositionLng = -74.0150;
+            //var radarPositionLat = 40.7078;
+    
+            var ellipsoid=viewer.scene.globe.ellipsoid;
+            var cartesian3=new Cesium.Cartesian3(-2371587.17705087,-4668844.01756398,3628959.44085712);
+            var cartographic=ellipsoid.cartesianToCartographic(cartesian3);
+            var lat=Cesium.Math.toDegrees(cartographic.latitude);
+            var lng=Cesium.Math.toDegrees(cartographic.longitude);
+            var alt=cartographic.height;
+       
+            //var radarPositionLng = -117.01975953859038;
+           // var radarPositionLat = 34.885343663650325;
+           // var radarHeight = 1000.0;
+            var minYJ = 0; 
+            var maxYJ = 90; 
+            var minFW=0; 
+            var maxFW=360;
+            var radarUtil = new RadarUtil(lng, lat, alt);
+        	//var radarUtil = new RadarUtil(radarPositionLng, radarPositionLat, radarHeight);
+            
+            var point ;
+            
+            //alert(point[0]+"ddd"+ point[1]+"sss"+ point[2]);
+            
+    
+            var defaultJL = 2;
+            var degradeJL = 100;
+            
+            for(var yjIndex=0; yjIndex<radarWL.length; yjIndex++)
+            {
+                    var positions = [];
+                    for(var fw=0; fw<=maxFW; fw+=2)
+                    {
+                            var yj = radarWL[yjIndex][0];
+                            var defaultJL = radarWL[yjIndex][1]/1000.0 * 1000 * 20000;
+                            var lastpoint = null;
+                            
+                            var point = null;
+                            if(yj>0 && yj<35 && fw>40 && fw<60)
+                            {
+                            defaultJL = 5;
+                            }
+    
+                            else if(yj>0 && yj<35 && fw>0 && fw<20)
+                            {
+                            defaultJL = 5;
+                            }
+    
+                            else if(yj>0 && yj<20 && fw>210 && fw<220)
+                            {
+                            defaultJL = 5;
+                            }
+                            
+                            var height = defaultJL * Math.sin(Math.PI * yj / 180);
+                        /*if(fw>=180 && fw<=200 && yj>=minYJ && yj<=75)
+                        {
+                            height = degradeJL * Math.sin(Math.PI * yj / 180);
+                            point = radarUtil.radar2gps(degradeJL, fw, height);
+                        }
+                        else
+                        {
+                                point = radarUtil.radar2gps(defaultJL, fw, height);
+                        }*/
+                        point = radarUtil.radar2gps(defaultJL, fw, height);
+                        
+                        positions.push(point[0]);
+                        positions.push(point[1]);
+                        positions.push(point[2]);
+                        
+                        //var point = radarUtil.radar2gps(defaultJL, fw, height);
+                    /*	if(lastpoint!=null){
+                            var orangeOutlined = viewer.entities.add({
+                                name : '0',
+                                polyline : {
+                                    positions : Cesium.Cartesian3.fromDegreesArrayHeights([lastpoint[0], lastpoint[1], lastpoint[2],
+                                                                                        point[0], point[1], point[2]]),
+                                    width : 3,
+                                    
+                                material : new Cesium.PolylineOutlineMaterialProperty({
+                                    color : Cesium.Color.ORANGE,
+                                    outlineWidth : 1,
+                                    outlineColor : Cesium.Color.ORANGE
+                                })
+                                }
+                            });
+                        }
+    
+                    lastpoint = point;*/
+                    }
+                
+                
+                
+                
+                    var redPolygon = viewer.entities.add({
+                        name : 'Red polygon on surface',
+                        position: Cesium.Cartesian3.fromDegrees(lng, lat, alt),
+                        polygon : {
+                            hierarchy : Cesium.Cartesian3.fromDegreesArrayHeights(positions),
+                            height: 50,
+                            outline : true,
+                            perPositionHeight : true,
+                            material :  Cesium.Color.GREEN.withAlpha(0.1)
+                        }
+                    });
+                
+            }
+    
+    
+    
+    
+            var redBox = viewer.entities.add({
+              name : 'Red box with black outline',
+              //position: Cesium.Cartesian3.fromDegrees(-74.0150, 40.7078, 250.0),
+              position: Cesium.Cartesian3.fromDegrees(lng, lat, alt),
+              box : {
+                dimensions : new Cesium.Cartesian3(20.0, 20.0, 20.0),
+                material : Cesium.Color.RED.withAlpha(0.8),
+                outline : true,
+                outlineColor : Cesium.Color.BLACK
+              }
+            });
+            
+    </script> 
+    <script id="cesium_sandcastle_script">
+     
+        var statusDisplay = document.createElement('div');
+        var fuelDisplay = document.createElement('div');
+        var czmlPath = '${ctxPath}/static/Cesium/SampleData/';
+        var vehicleEntity;
+
+       // Add a blank CzmlDataSource to hold our multi-part entity/entities.
+        var dataSource = new Cesium.CzmlDataSource();
+        viewer.dataSources.add(dataSource);
+
+        // This demo shows how a single path can be broken up into several CZML streams.
+        var partsToLoad = [{
+            url: 'MultipartVehicle_part1.czml',
+            range: [0, 1500],
+            requested: false,
+            loaded: false
+        }];
+
+        function updateStatusDisplay() {
+            var msg = '';
+            partsToLoad.forEach(function(part) {
+                msg += part.url + ' - ';
+                if (part.loaded) {
+                    msg += 'Loaded.<br/>';
+                } else if (part.requested) {
+                    msg += 'Loading now...<br/>';
+                } else {
+                    msg += 'Not needed yet.<br/>';
+                }
+            });
+            statusDisplay.innerHTML = msg;
+        }
+
+        // Helper function to mark a part as requested, and process it into the dataSource.
+        function processPart(part) {
+            part.requested = true;
+            updateStatusDisplay();
+            dataSource.process(czmlPath + part.url).then(function() {
+                part.loaded = true;
+                updateStatusDisplay();
+
+                // Follow the vehicle with the camera.
+                if (!viewer.trackedEntity) {
+                    viewer.trackedEntity = vehicleEntity = dataSource.entities.getById('Vehicle');
+                }
+            });
+        }
+
+        // Load the first part up front.
+        processPart(partsToLoad[0]);
+
+        // Load a new section before the clock naturally gets there.
+        // Note this can't predict when a user may fast-forward to it.
+        var preloadTimeInSeconds = 100;
+
+        viewer.clock.onTick.addEventListener(function(clock) {
+            // This example uses time offsets from the start to identify which parts need loading.
+            var timeOffset = Cesium.JulianDate.secondsDifference(clock.currentTime, clock.startTime);
+
+            // Filter the list of parts to just the ones that need loading right now.
+            // Then, process each part that needs loading.
+            partsToLoad.filter(function(part) {
+                return (!part.requested) &&
+                    (timeOffset >= part.range[0] - preloadTimeInSeconds) &&
+                    (timeOffset <= part.range[1]);
+            }).forEach(function(part) {
+                processPart(part);
+            });
+
+            if (vehicleEntity) {
+                var fuel = vehicleEntity.properties.fuel_remaining.getValue(clock.currentTime);
+                if (Cesium.defined(fuel)) {
+                    fuelDisplay.textContent = 'Fuel: ' + fuel.toFixed(2) + ' gal';
+                }
+            }
+        });
+
+        // Add a reset button, for convenience.
+        Sandcastle.addToolbarButton('Reset demo', function() {
+            // Put things back to the starting position.
+            viewer.clock.currentTime = viewer.clock.startTime;
+            viewer.clock.shouldAnimate = true;
+
+            partsToLoad.forEach(function(part) {
+                part.requested = false;
+                part.loaded = false;
+            });
+
+            dataSource.entities.removeAll();
+            processPart(partsToLoad[0]);
+        });
+
+        // Show the status display below the reset button.
+        statusDisplay.style.background = 'rgba(42, 42, 42, 0.7)';
+        statusDisplay.style.padding = '5px 10px';
+        document.getElementById('toolbar').appendChild(statusDisplay);
+
+        // Show a multi-part custom property being read from CZML.
+        fuelDisplay.style.background = 'rgba(42, 42, 42, 0.7)';
+        fuelDisplay.style.padding = '5px 10px';
+        fuelDisplay.style.marginTop = '5px';
+        document.getElementById('toolbar').appendChild(fuelDisplay);
+        //Sandcastle_End
+            Sandcastle.finishedLoading();
+    
+</script>
+
+
+
+    
+
+
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="cesium-sandcastle-labels" content="Showcases">
+    <link href="${ctxPath}/static/Cesium/Apps/Sandcastle/templates/bucket.css" rel="stylesheet" />
+    <script src="${ctxPath}/static/js/jquery.min.js?v=2.1.4"></script>
+    <script src="${ctxPath}/static/Cesium/Build/Cesium/Cesium.js"></script>
+    <script type="text/javascript" src="${ctxPath}/static/Cesium/Apps/Sandcastle/Sandcastle-header.js"></script>
+    <script type="text/javascript" src="${ctxPath}/static/Cesium/ThirdParty/requirejs-2.1.20/require.js"></script>
+    <script type="text/javascript">
+    require.config({
+        baseUrl : '../../../Source',
+        waitSeconds : 60
+    });
+    </script>
+</head>
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html">
+<div id="cesiumContainer" class="fullSize"></div>
+<div id="toolbar"></div>
+<script>
+function drawRadarPower(powerArr){
+    var radarPositionLng = 121.47861;
+    var radarPositionLat = 31.2204949;
+    var radarHeight = 10;
+    //if(threeDPower.length != 360)
+      //  return;
+    temp_arr = [];
+
+
+    var mid =powerArr.length/2+1;
+    ysarr =[]
+     var highsd = 0.2;
+     var lowsd = 0.01;
+     var jg = (highsd - lowsd)/(mid+1);
+
+     for(var i=0;i<mid+1;i++){
+        
+        ysarr.push(highsd);
+        highsd = highsd-jg;
+
+     } 
+
+
+    for(var i = 0; i < powerArr.length ; i++){
+        var fwj = 0;
+        strpower = powerArr[i]
+        strpower = strpower.replace("[","")
+        strpower = strpower.replace("]","")
+        temp_arr = strpower.split(",")
+        var sd;
+        if(i<=mid){
+             sd = ysarr[i];
+        }else{
+             sd= ysarr[mid-powerArr.length + i];
+         }
+        viewer.entities.add({
+            name : 'Blue polygon with holes',
+            position: Cesium.Cartesian3.fromDegrees(radarPositionLng, radarPositionLat, radarHeight),
+            polygon : {
+                hierarchy :  Cesium.Cartesian3.fromDegreesArrayHeights(temp_arr),
+                material : Cesium.Color.BLUE.withAlpha(sd),
+             /*   material : new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(function() { 
+                    return Cesium.Color.fromRandom({
+                        minimumRed : 0.75,
+                        // minimumGreen : 0.75,
+                        minimumBlue : 0.75,
+                        alpha : sd
+                    });
+
+                    }, false)),
+                */
+                height : radarHeight,
+                perPositionHeight : true,
+                outline : true ,// height is required for outline to display
+                outlineColor : Cesium.Color.BLUE
+            }
+        });
+       
+            
+    }
+}
+
+    var viewer = new Cesium.Viewer('cesiumContainer');
+ //Seed the random number generator for repeatable results.
+ /*
+   var promise=Cesium.GeoJsonDataSource.load('http://localhost:8080/geoserver/cesium/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=cesium:shanghai&maxFeatures=50&outputFormat=application/json');
+    promise.then(function(dataSource) {
+        viewer.dataSources.add(dataSource);
+        
+        });
+        viewer.flyTo(promise);
+        var scene = viewer.scene;
+        viewer.scene.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(121.479181962681,31.2204944604463,1000)
+        });
+
+*/
+        
+
+
+  /*  var provider = new Cesium.WebMapServiceImageryProvider({
+            url: 'http://localhost:8080/geoserver/cesium/wms',
+            layers: 'cesium:shanghai',
+            parameters: {
+                service: 'WMS',
+                format: 'image/png',
+                transparent: true,
+            }
+        });
+    viewer.imageryLayers.addImageryProvider(provider);
+    */
+    var tileset = new Cesium.Cesium3DTileset({url: '${ctxPath}/static/Cesium/data/data1/tileset.json' });
+    viewer.scene.primitives.add(tileset);
+    viewer.scene.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(121.479181962681,31.2204944604463,5000)
+    });
+    
+    viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(121.47861,31.2204949,10),
+        point : {
+            pixelSize : 2,
+            color : Cesium.Color.RED
+        }
+    });
+    Sandcastle.addToolbarButton('计算wl ', function() {
+      	$.ajax({
+	    	url:"${ctxPath}/gisController/calRWL.shtml",
+	    	type:"post",
+	    	dataType:"json",
+	    	success:function(result){
+	    		alert(result)
+	    	}
+		});
+    });
+    Sandcastle.addToolbarButton('加载wl', function() {
+      	$.ajax({
+	    	url:"${ctxPath}/gisController/getRWL.shtml",
+	    	type:"post",
+	    	dataType:"json",
+	    	success:function(result){
+	    		drawRadarPower(result);
+	    	}
+		});
+    });
+    Sandcastle.addToolbarButton('开始推演', function() {
+    	//viewer.dataSources.add(Cesium.CzmlDataSource.load(czml));
+    	processPart(partsToLoad[0]);
+    	
+    });
+    Sandcastle.addToolbarButton('降速', function() {
+        viewer.clockViewModel.multiplier /= 2;
+    });
+
+    Sandcastle.addToolbarButton('倍速 ', function() {
+        viewer.clockViewModel.multiplier *= 2;
+    });
+   Sandcastle.finishedLoading();
+   var dataSource = new Cesium.CzmlDataSource();
+   viewer.dataSources.add(dataSource);
+   var czmlPath = '${ctxPath}/static/Cesium/models/';
+   var partsToLoad = [{
+	    url: 'plane.czml',
+	    range: [0, 1500],
+	    requested: false,
+	    loaded: false
+	}];
+   function processPart(part) {
+       part.requested = true;
+       dataSource.process(czmlPath + part.url).then(function() {
+    	   var entity = dataSource.entities.getById("Vehicle");
+    	   realTimeW(entity);
+           part.loaded = true;
+       });
+   }
+
+</script>
+<script>
+var radarPositionLng = 121.47861;
+var radarPositionLat = 31.2204949;
+var radarHeight = 10;
+
+    var PolyLinePrimitive = (function(){
+        function _(positions){
+            this.options = {
+                polyline : {
+                    show : true,
+                    positions : [],
+                    material : new Cesium.PolylineGlowMaterialProperty({
+                     glowPower : 0.3,
+                      color : Cesium.Color.RED.withAlpha(0.9),
+                    
+                    }),
+                    width : 1
+                }
+            };
+            this.positions = positions;
+            this._init();
+        }
+    
+        _.prototype._init = function(){
+            var _self = this;
+            var _update = function(){
+                return _self.positions;
+            };
+            //实时更新polyline.positions
+            this.options.polyline.positions = new Cesium.CallbackProperty(_update,false);
+            viewer.entities.add(this.options);
+        };
+    
+        return _;
+    })();
+
+function realTimeW(entity){
+    var pos2 =  Cesium.Cartesian3.fromDegrees(radarPositionLng, radarPositionLat, radarHeight);
+    var positions = [pos2,pos2];
+    //var entity =viewer.entities.getById("Vehicle");
+    var zc = entity.model.color;
+    var Line =undefined;
+    viewer.clock.onTick.addEventListener((clock)=>{
+        var result;
+         
+        var poly = undefined;
+        var curtime = viewer.clock.currentTime;
+        
+        var pos1= entity.position.getValue(curtime,result);
+        positions[1] = pos1;
+       // console.log(positions);
+        if (!Cesium.defined(Line)) {
+            poly = new PolyLinePrimitive(positions); 
+        }else{
+            positions[1] = pos1;
+        }
+        //console.log(getSpaceDistanceByCartesian3(pos1,pos2));
+        var dis = getSpaceDistanceByCartesian3(pos1,pos2);
+        if(dis < 2000){
+           //console.log(1111);
+            entity.model.color  =  Cesium.Color.fromAlpha(Cesium.Color.RED, parseFloat(0.5));
+        }else{
+            entity.model.color  = zc;
+        }
+      
+        
+        
+        viewer.entities.add({
+            position:pos1,
+            point : {
+                pixelSize : 1,
+                color : Cesium.Color.YELLOW
+            }
+        });
+        
+    })
+}
+ 
+
+      //空间两点距离计算函数
+  function getSpaceDistance(positions) {
+	var distance = 0;
+	for (var i = 0; i < positions.length - 1; i++) { 
+		
+	var point1cartographic = Cesium.Cartographic.fromCartesian(positions[i]);
+	var point2cartographic = Cesium.Cartographic.fromCartesian(positions[i+1]);
+	/**根据经纬度计算出距离**/
+	var geodesic = new Cesium.EllipsoidGeodesic();
+	geodesic.setEndPoints(point1cartographic, point2cartographic);
+	var s = geodesic.surfaceDistance;
+    //console.log(Math.sqrt(Math.pow(distance, 2) + Math.pow(endheight, 2)));
+    //返回两点之间的距离
+	s = Math.sqrt(Math.pow(s, 2) + Math.pow(point2cartographic.height - point1cartographic.height, 2));	
+	distance = distance + s;
+	}	
+	return distance.toFixed(2);    
+  }
+
+      //空间两点距离计算函数
+ function getSpaceDistanceByCartesian3(pos1,pos2) {
+	var distance = 0;
+	distance = Math.sqrt(Math.pow(pos1.x-pos2.x, 2) + Math.pow(pos1.y-pos2.y, 2)+Math.pow(pos1.z-pos2.z, 2) );	
+	return distance.toFixed(2);    
+  }
+
+</script>
+
+</body>
+</html>

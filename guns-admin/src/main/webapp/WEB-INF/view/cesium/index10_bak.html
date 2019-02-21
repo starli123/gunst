@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="cesium-sandcastle-labels" content="Showcases">
+    <link href="${ctxPath}/static/Cesium/Apps/Sandcastle/templates/bucket.css" rel="stylesheet" />
+    <script src="${ctxPath}/static/js/jquery.min.js?v=2.1.4"></script>
+    <script src="${ctxPath}/static/Cesium/Build/Cesium/Cesium.js"></script>
+    <script type="text/javascript" src="${ctxPath}/static/Cesium/Apps/Sandcastle/Sandcastle-header.js"></script>
+    <script type="text/javascript" src="${ctxPath}/static/Cesium/ThirdParty/requirejs-2.1.20/require.js"></script>
+    <script type="text/javascript">
+    require.config({
+        baseUrl : '../../../Source',
+        waitSeconds : 60
+    });
+    </script>
+</head>
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html">
+<div id="cesiumContainer" class="fullSize"></div>
+<div id="toolbar"></div>
+<script>
+
+/*常量数据*/
+VincentyConstants = {
+    a: 6378137,
+    b: 6356752.3142,
+    f: 1/298.257223563
+}
+/**
+*Calculate destination point given start point lat/long (numeric degrees),
+* bearing (numeric degrees) & distance (in m).
+*/
+function destinationVincenty(lonlat, brng, dist) {
+    var u = this;
+    var ct = u.VincentyConstants;
+    var a = ct.a, b = ct.b, f = ct.f;
+
+    var lon1 = lonlat.lon*1;  //乘一（*1）是为了确保经纬度的数据类型为number
+    var lat1 = lonlat.lat*1;
+
+    var s = dist;
+    var alpha1 = u.rad(brng);
+    var sinAlpha1 = Math.sin(alpha1);
+    var cosAlpha1 = Math.cos(alpha1);
+
+    var tanU1 = (1-f) * Math.tan(u.rad(lat1));
+    var cosU1 = 1 / Math.sqrt((1 + tanU1*tanU1)), sinU1 = tanU1*cosU1;
+    var sigma1 = Math.atan2(tanU1, cosAlpha1);
+    var sinAlpha = cosU1 * sinAlpha1;
+    var cosSqAlpha = 1 - sinAlpha*sinAlpha;
+    var uSq = cosSqAlpha * (a*a - b*b) / (b*b);
+    var A = 1 + uSq/16384*(4096+uSq*(-768+uSq*(320-175*uSq)));
+    var B = uSq/1024 * (256+uSq*(-128+uSq*(74-47*uSq)));
+
+    var sigma = s / (b*A), sigmaP = 2*Math.PI;
+    while (Math.abs(sigma-sigmaP) > 1e-12) {
+        var cos2SigmaM = Math.cos(2*sigma1 + sigma);
+        var sinSigma = Math.sin(sigma);
+        var cosSigma = Math.cos(sigma);
+        var deltaSigma = B*sinSigma*(cos2SigmaM+B/4*(cosSigma*(-1+2*cos2SigmaM*cos2SigmaM)-
+            B/6*cos2SigmaM*(-3+4*sinSigma*sinSigma)*(-3+4*cos2SigmaM*cos2SigmaM)));
+        sigmaP = sigma;
+        sigma = s / (b*A) + deltaSigma;
+    }
+
+    var tmp = sinU1*sinSigma - cosU1*cosSigma*cosAlpha1;
+    var lat2 = Math.atan2(sinU1*cosSigma + cosU1*sinSigma*cosAlpha1,
+        (1-f)*Math.sqrt(sinAlpha*sinAlpha + tmp*tmp));
+    var lambda = Math.atan2(sinSigma*sinAlpha1, cosU1*cosSigma - sinU1*sinSigma*cosAlpha1);
+    var C = f/16*cosSqAlpha*(4+f*(4-3*cosSqAlpha));
+    var L = lambda - (1-C) * f * sinAlpha *
+        (sigma + C*sinSigma*(cos2SigmaM+C*cosSigma*(-1+2*cos2SigmaM*cos2SigmaM)));
+
+    var revAz = Math.atan2(sinAlpha, -tmp);  // final bearing
+
+            
+            var lon_destina = lon1*1+u.deg(L);
+            
+            //var num_lon_dest = lon_destina*1;
+            
+            //var lon_destina = new Number;
+            
+    var lonlat_destination = {lon: lon_destina, lat: u.deg(lat2)};
+
+    return lonlat_destination;
+}
+
+
+function rad(d)
+{
+   return d * Math.PI / 180.0;
+}
+
+function deg(x) {
+    return x*180/Math.PI;
+}  
+
+
+function drawRadarPower(threeDPower){
+    var radarPositionLng = 121.47861;
+    var radarPositionLat = 31.2204949;
+    var radarHeight = 10;
+    //if(threeDPower.length != 360)
+      //  return;
+    temp_arr = [];
+
+
+    var mid =threeDPower[0].length/2+1;
+    ysarr =[]
+     var highsd = 0.2;
+     var lowsd = 0.01;
+     var jg = (highsd - lowsd)/(mid+1);
+
+     for(var i=0;i<mid+1;i++){
+        
+        ysarr.push(highsd);
+        highsd = highsd-jg;
+
+     } 
+
+
+    for(var i = 0; i < threeDPower[0].length ; i++){
+        var fwj = 0;
+        for(var j = 0;j < threeDPower.length ; j++){
+            var yj = threeDPower[j][i][0];
+            var defaultJL = threeDPower[j][i][1];;
+            var r = defaultJL * Math.cos(Cesium.Math.toRadians(yj));
+            var h = defaultJL * Math.sin(Cesium.Math.toRadians(yj))+radarHeight;
+            var centerpoint = {lon: radarPositionLng, lat: radarPositionLat};
+           
+        
+            var destpoint =  destinationVincenty(centerpoint, j, r); 
+            temp_arr.push(destpoint.lon);
+            temp_arr.push(destpoint.lat); 
+            temp_arr.push(h);
+  
+        }
+        var sd;
+        if(i<=mid){
+             sd = ysarr[i];
+        }else{
+             sd= ysarr[mid-threeDPower[0].length + i];
+         }
+        sd = 0.01;
+        viewer.entities.add({
+            name : 'Blue polygon with holes',
+            position: Cesium.Cartesian3.fromDegrees(radarPositionLng, radarPositionLat, radarHeight),
+            polygon : {
+                hierarchy :  Cesium.Cartesian3.fromDegreesArrayHeights(temp_arr),
+                material : Cesium.Color.BLUE.withAlpha(sd),
+             /*   material : new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(function() { 
+                    return Cesium.Color.fromRandom({
+                        minimumRed : 0.75,
+                        // minimumGreen : 0.75,
+                        minimumBlue : 0.75,
+                        alpha : sd
+                    });
+
+                    }, false)),
+                */
+                height : radarHeight,
+                perPositionHeight : true,
+                outline : true ,// height is required for outline to display
+                outlineColor : Cesium.Color.BLUE
+            }
+        });
+       
+            
+    }
+}
+
+    var viewer = new Cesium.Viewer('cesiumContainer');
+ //Seed the random number generator for repeatable results.
+ /*
+   var promise=Cesium.GeoJsonDataSource.load('http://localhost:8080/geoserver/cesium/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=cesium:shanghai&maxFeatures=50&outputFormat=application/json');
+    promise.then(function(dataSource) {
+        viewer.dataSources.add(dataSource);
+        
+        });
+        viewer.flyTo(promise);
+        var scene = viewer.scene;
+        viewer.scene.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(121.479181962681,31.2204944604463,1000)
+        });
+
+*/
+        
+
+
+  /*  var provider = new Cesium.WebMapServiceImageryProvider({
+            url: 'http://localhost:8080/geoserver/cesium/wms',
+            layers: 'cesium:shanghai',
+            parameters: {
+                service: 'WMS',
+                format: 'image/png',
+                transparent: true,
+            }
+        });
+    viewer.imageryLayers.addImageryProvider(provider);
+    */
+    var tileset = new Cesium.Cesium3DTileset({url: '${ctxPath}/static/Cesium/data/data1/tileset.json' });
+    viewer.scene.primitives.add(tileset);
+    viewer.scene.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(121.479181962681,31.2204944604463,5000)
+    });
+    
+    viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(121.47861,31.2204949,10),
+        point : {
+            pixelSize : 2,
+            color : Cesium.Color.RED
+        }
+    });
+    Sandcastle.addToolbarButton('load data', function() {
+      	$.ajax({
+	    	url:"${ctxPath}/gisController/getRWL.shtml",
+	    	type:"post",
+	    	dataType:"json",
+	    	success:function(result){
+	    		drawRadarPower(result);
+	    	}
+		});
+    });
+
+   Sandcastle.finishedLoading();
+
+
+</script>
+
+</body>
+</html>

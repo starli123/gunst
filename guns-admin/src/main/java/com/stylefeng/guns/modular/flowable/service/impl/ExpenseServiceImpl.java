@@ -35,7 +35,7 @@ import java.util.List;
  * @author stylefeng
  * @since 2017-12-04
  */
-@Service
+@Service("expenseService")
 public class ExpenseServiceImpl extends ServiceImpl<ExpenseMapper, Expense> implements IExpenseService {
 
     @Autowired

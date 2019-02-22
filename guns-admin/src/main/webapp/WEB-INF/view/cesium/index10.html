@@ -117,12 +117,32 @@ function drawRadarPower(powerArr){
         destination: Cesium.Cartesian3.fromDegrees(121.479181962681,31.2204944604463,5000)
     });
     
-    viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(121.47861,31.2204949,10),
-        point : {
-            pixelSize : 2,
-            color : Cesium.Color.RED
-        }
+
+    Sandcastle.addToolbarButton('部署radar', function() {
+      	$.ajax({
+	    	url:"${ctxPath}/gisController/loadRadar.shtml",
+	    	type:"post",
+	    	dataType:"json",
+	    	success:function(result){
+	    		result.forEach(function(item){
+	    			var position = Cesium.Cartesian3.fromDegrees(item.jd,item.wd,item.gd);
+	    			var radar =viewer.entities.add({
+	    	            //Use our computed positions
+	    	            position : position,
+	    	            color : Cesium.Color.fromAlpha(Cesium.Color.RED, parseFloat(0.5)),
+	    	            //Load the Cesium plane model to represent the entity
+	    	            model : {
+	    	                uri : '${ctxPath}/static/Cesium/models/radar.gltf',
+	    	                minimumPixelSize : 1,
+	    	                scale : 0.09
+	    	            }
+	    	     	});
+	    			radar.model.color  =  Cesium.Color.fromAlpha(Cesium.Color.RED, parseFloat(0.5));
+	    		});
+	    		
+	    		 
+	    	}
+		});
     });
     Sandcastle.addToolbarButton('计算wl ', function() {
       	$.ajax({

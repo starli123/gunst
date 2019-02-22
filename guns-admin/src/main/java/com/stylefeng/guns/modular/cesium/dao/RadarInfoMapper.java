@@ -9,5 +9,7 @@ import com.stylefeng.guns.modular.cesium.bean.RadarInfo;
 
 
 public interface RadarInfoMapper extends BaseMapper<RadarInfo> {
-    List<RadarInfo> selectById(@Param("id") String id);
+    List<RadarInfo> getRadarById(@Param("id") String id);
+
+	List<RadarInfo> getAllRadar();
 }

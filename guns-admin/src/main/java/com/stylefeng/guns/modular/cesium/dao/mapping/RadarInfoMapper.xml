@@ -15,11 +15,17 @@
     <sql id="Base_Column_List">
 		id, name, xh, jd, wd , gd
 	</sql>
-    <select id="selectById" resultType="com.stylefeng.guns.modular.cesium.bean.RadarInfo">
+    <select id="getRadarById" resultType="com.stylefeng.guns.modular.cesium.bean.RadarInfo">
         select
         <include refid="Base_Column_List"/>
         from dktc_radarinfo
         where id = #{id} 
+    </select>
+      <select id="getAllRadar" resultType="com.stylefeng.guns.modular.cesium.bean.RadarInfo">
+        select
+         <include refid="Base_Column_List"/>
+        from dktc_radarinfo
+       
     </select>
 
 

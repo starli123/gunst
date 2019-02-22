@@ -12,6 +12,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.stylefeng.guns.core.base.controller.BaseController;
 import com.stylefeng.guns.modular.cesium.bean.RadarPower;
+import com.stylefeng.guns.modular.cesium.service.IRadarInfoService;
 import com.stylefeng.guns.modular.cesium.service.IRadarPowerService;
 import com.stylefeng.guns.modular.cesium.service.PGService;
 
@@ -23,6 +24,9 @@ public class ToGisIndexController extends BaseController{
 	
 	@Autowired
 	private IRadarPowerService powerService;
+	
+	@Autowired
+	private IRadarInfoService infoService;
 	
 	private String PREFIX = "/cesium/";
 	@RequestMapping("/index")
@@ -70,5 +74,11 @@ public class ToGisIndexController extends BaseController{
 		}
         return "ok！";
     }
+	@RequestMapping("/loadRadar")
+	@ResponseBody
+	public List getRadarInfoList() {
+		 List list = this.infoService.getAllList();
+		 return list;
+	}
 
 }

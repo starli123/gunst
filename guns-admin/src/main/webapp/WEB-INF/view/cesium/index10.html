@@ -82,6 +82,67 @@ function drawRadarPower(powerArr){
     }
 }
 
+function drawRadarHeightPower(powerArr){
+    //var radarPositionLng = 121.47861;
+    //var radarPositionLat = 31.2204949;
+    var radarPositionLng = 121.47961;
+    var radarPositionLat = 31.2230949;
+    var radarHeight = 0;
+    //if(threeDPower.length != 360)
+      //  return;
+    temp_arr = [];
+
+    var colr=[ Cesium.Color.YELLOW.withAlpha(0.9),Cesium.Color.RED.withAlpha(0.9),Cesium.Color.BLUE.withAlpha(0.9),Cesium.Color.GREEN.withAlpha(0.8),Cesium.Color.BLACK.withAlpha(0.4)];
+    var mid =powerArr.length/2+1;
+    ysarr =[]
+     var highsd = 0.2;
+     var lowsd = 0.01;
+     var jg = (highsd - lowsd)/(mid+1);
+
+     for(var i=0;i<mid+1;i++){
+        
+        ysarr.push(highsd);
+        highsd = highsd-jg;
+
+     } 
+
+
+    for(var i = 0; i < powerArr.length ; i++){
+        var fwj = 0;
+
+        var sd;
+        if(i<=mid){
+             sd = ysarr[i];
+        }else{
+             sd= ysarr[mid-powerArr.length + i];
+         }
+        viewer.entities.add({
+            name : 'Blue polygon with holes',
+            position: Cesium.Cartesian3.fromDegrees(radarPositionLng, radarPositionLat, radarHeight),
+            polygon : {
+                hierarchy :  Cesium.Cartesian3.fromDegreesArrayHeights(powerArr[i]),
+                material : colr[i],
+             /*   material : new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(function() { 
+                    return Cesium.Color.fromRandom({
+                        minimumRed : 0.75,
+                        // minimumGreen : 0.75,
+                        minimumBlue : 0.75,
+                        alpha : sd
+                    });
+
+                    }, false)),
+                */
+                height : radarHeight,
+                perPositionHeight : true,
+                outline : true ,// height is required for outline to display
+                outlineColor : Cesium.Color.BLUE
+            }
+        });
+       
+            
+    }
+}
+
     var viewer = new Cesium.Viewer('cesiumContainer');
  //Seed the random number generator for repeatable results.
  /*
@@ -154,6 +215,26 @@ function drawRadarPower(powerArr){
 	    	}
 		});
     });
+    Sandcastle.addToolbarButton('500GDC', function() {
+      	$.ajax({
+	    	url:"${ctxPath}/gisController/calHeightRWL.shtml",
+	    	type:"post",
+	    	dataType:"json",
+	    	success:function(result){
+	    		drawRadarHeightPower(result);
+	    	}
+		});
+    });
+    Sandcastle.addToolbarButton('WL融合', function() {
+      	$.ajax({
+	    	url:"${ctxPath}/gisController/wlmerge.shtml",
+	    	type:"post",
+	    	dataType:"json",
+	    	success:function(result){
+	    		drawRadarHeightPower(result);
+	    	}
+		});
+    });
     Sandcastle.addToolbarButton('加载wl', function() {
       	$.ajax({
 	    	url:"${ctxPath}/gisController/getRWL.shtml",
@@ -164,6 +245,51 @@ function drawRadarPower(powerArr){
 	    	}
 		});
     });
+    
+    
+ // Add Alaskan locations
+    Sandcastle.addDefaultToolbarMenu([
+    	{
+            text: 'radar',
+            onselect: function() {
+            	$.ajax({
+        	    	url:"${ctxPath}/gisController/loadHeightPower.shtml?radarid=0&heightlevel=70",
+        	    	type:"post",
+        	    	dataType:"json",
+        	    	success:function(result){
+        	    		drawRadarHeightPower(result);
+        	    	}
+        		});
+            }
+        }
+    	,{
+        text: 'radar1',
+        onselect: function() {
+        	$.ajax({
+    	    	url:"${ctxPath}/gisController/loadHeightPower.shtml?radarid=1&heightlevel=70",
+    	    	type:"post",
+    	    	dataType:"json",
+    	    	success:function(result){
+    	    		drawRadarHeightPower(result);
+    	    	}
+    		});
+        }
+    }, {
+        text: 'radar2',
+        onselect: function() {
+        	$.ajax({
+    	    	url:"${ctxPath}/gisController/loadHeightPower.shtml?radarid=2&heightlevel=70",
+    	    	type:"post",
+    	    	dataType:"json",
+    	    	success:function(result){
+    	    		drawRadarHeightPower(result);
+    	    	}
+    		});
+        }
+    }], 'toolbar');
+    
+    
+    
     Sandcastle.addToolbarButton('开始推演', function() {
     	//viewer.dataSources.add(Cesium.CzmlDataSource.load(czml));
     	processPart(partsToLoad[0]);

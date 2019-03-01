@@ -156,4 +156,60 @@ public class CoordinateTransferUtil {
 
 
     }
+    /// <summary>
+    /// 雷达为中心的坐标(斜距，方位角，高度)转换成经纬度高度
+    /// </summary>
+    /// <param name="r"></param>
+    /// <param name="a"></param>
+    /// <param name="h"></param>
+    /// <param name="lon"></param>
+    /// <param name="lat"></param>
+    /// <param name="height"></param>
+    public double[] radar2Wgs84(double r, double a, double h)
+    {
+    	double[] jwg = new double[3];
+    	 double lon,  lat,  height;
+        ///1、站心极坐标转为站心直角坐标。
+        double xy = Math.sqrt(r * r - h * h);
+        double x1 = xy * Math.sin(Math.PI * a / 180);
+        double y1 = xy * Math.cos(Math.PI * a / 180);
+        double z1 = h;
+        ///2、站心直角坐标系 转换为 大地直角坐标系
+        double xe = -sinradarlon * x1 - sinradarlat * cosradarlon * y1 + cosradarlon * cosradarlat * z1 + X0;
+        double yn = cosradarlon * x1 - sinradarlat * sinradarlon * y1 + cosradarlat * sinradarlon * z1 + Y0;
+        double zu = cosradarlat * y1 + sinradarlat * z1 + Z0;
+        ///3、大地直角坐标转换为经纬度WGS-84
+
+        lon = Math.atan(yn / xe) * 180 / Math.PI;
+        if (lon < 0)
+            lon = 180 + lon;
+        double initLat = Math.atan(zu / (Math.sqrt(xe * xe + yn * yn))) * 180 / Math.PI;
+        lat = latIterate(initLat, xe, yn, zu);
+        height = Math.sqrt(xe * xe + yn * yn) / Math.cos(Math.PI * lat / 180) - radarN;
+        jwg[0] = lon;
+        jwg[1] = lat;
+        jwg[2] = height;
+        return jwg;
+    }
+    
+    /// <summary>
+    ///测距 
+    /// </summary>
+    /// <param name="lng1">点1经度</param>
+    /// <param name="lat1">点1纬度</param>
+    /// <param name="lng2">点2经度</param>
+    /// <param name="lat2">点2纬度</param>
+    /// <returns>km</returns>
+    public static double distance(double lng1, double lat1, double lng2, double lat2)
+    {
+        double latRadians1 = lat1 * (Math.PI / 180);
+        double latRadians2 = lat2 * (Math.PI / 180);
+        double latRadians = latRadians1 - latRadians2;
+        double lngRadians = lng1 * (Math.PI / 180) - lng2 * (Math.PI / 180);
+        double f = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(latRadians / 2), 2) + Math.cos(latRadians1) * Math.cos(latRadians2) * Math.pow(Math.sin(lngRadians / 2), 2)));
+        return f * 6378.137;
+    }
+    public static void main(String[] args) {
+    	System.out.println(Math.sin(90*Math.PI/180));
+    }
 }
